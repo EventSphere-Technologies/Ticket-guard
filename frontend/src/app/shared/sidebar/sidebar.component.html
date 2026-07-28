@@ -1,0 +1,77 @@
+<div class="sidebar-backdrop" *ngIf="isOpen" (click)="closeSidebar()"></div>
+<button class="sidebar-mobile-toggle" *ngIf="currentUser" [class.open]="isOpen" (click)="toggleSidebar()">
+  {{ isOpen ? '✕' : '☰' }}
+</button>
+<div class="user-sidebar" *ngIf="currentUser" [class.open]="isOpen">
+  <div class="sidebar-brand">
+    Ticket<span>Guard</span>
+  </div>
+
+  <div class="admin-profile">
+    <div class="admin-avatar">{{ currentUser.firstName[0] }}</div>
+    <div class="admin-meta">
+      <div class="admin-name">{{ currentUser.firstName }} {{ currentUser.lastName }}</div>
+      <div class="admin-role">{{ currentUser.role === 'ADMIN' ? 'System Administrator' : 'Verified Customer' }}</div>
+    </div>
+  </div>
+
+  <!-- ADMIN Menu Links -->
+  <div class="sidebar-menu" *ngIf="currentUser.role === 'ADMIN'">
+    <a routerLink="/admin/dashboard" routerLinkActive="active-menu">
+      📊 Dashboard
+    </a>
+    <a routerLink="/admin/events" routerLinkActive="active-menu">
+      🎟️ Events Management
+    </a>
+    <a routerLink="/admin/users" routerLinkActive="active-menu">
+      👥 Users Management
+    </a>
+    <a routerLink="/admin/bookings" routerLinkActive="active-menu">
+      📝 Bookings Overview
+    </a>
+    <a routerLink="/admin/payments" routerLinkActive="active-menu">
+      💳 Payments & Refunds
+    </a>
+    <a routerLink="/admin/seats" routerLinkActive="active-menu">
+      💺 Seat Management
+    </a>
+    <a routerLink="/admin/fraud" routerLinkActive="active-menu">
+      🛡️ AI Fraud Detection
+    </a>
+    <a routerLink="/admin/reports" routerLinkActive="active-menu">
+      📈 Reports & Analytics
+    </a>
+    <a routerLink="/admin/notifications" routerLinkActive="active-menu">
+      🔔 Notifications
+    </a>
+    <a routerLink="/admin/settings" routerLinkActive="active-menu">
+      ⚙️ System Settings
+    </a>
+  </div>
+
+  <!-- CUSTOMER Menu Links (Matches mockup sidebar) -->
+  <div class="sidebar-menu" *ngIf="currentUser.role !== 'ADMIN'">
+    <a routerLink="/dashboard" routerLinkActive="active-menu" [routerLinkActiveOptions]="{exact: true}">
+      🏠 Home
+    </a>
+    <a routerLink="/dashboard" routerLinkActive="active-menu">
+      📅 Events
+    </a>
+    <a routerLink="/my-bookings" routerLinkActive="active-menu">
+      🎫 My Bookings
+    </a>
+    <a routerLink="/my-profile" routerLinkActive="active-menu">
+      👤 My Profile
+    </a>
+    <a routerLink="/payment-methods" routerLinkActive="active-menu">
+      💳 Payment Methods
+    </a>
+    <a routerLink="/notifications" routerLinkActive="active-menu">
+      🔔 Notifications
+    </a>
+  </div>
+
+  <div class="sidebar-bottom">
+    <button class="logout-btn-sidebar" (click)="logout()">Logout</button>
+  </div>
+</div>
