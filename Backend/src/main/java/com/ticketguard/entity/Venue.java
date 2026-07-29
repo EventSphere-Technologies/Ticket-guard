@@ -34,6 +34,7 @@ public class Venue {
     // Constructors
     public Venue() {}
 
+    @SuppressWarnings("java:S107")
     public Venue(Long id, String venueName, String city, String state, String country, String address, Integer capacity, LocalDateTime createdAt) {
         this.id = id;
         this.venueName = venueName;

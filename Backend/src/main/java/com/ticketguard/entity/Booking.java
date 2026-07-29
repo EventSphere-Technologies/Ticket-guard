@@ -45,6 +45,7 @@ public class Booking {
     // Constructors
     public Booking() {}
 
+    @SuppressWarnings("java:S107")
     public Booking(Long id, String bookingNumber, User user, Event event, LocalDateTime bookingDate, BigDecimal totalAmount, BookingStatus bookingStatus, PaymentStatus paymentStatus, String qrCode) {
         this.id = id;
         this.bookingNumber = bookingNumber;

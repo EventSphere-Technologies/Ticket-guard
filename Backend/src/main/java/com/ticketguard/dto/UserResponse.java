@@ -13,6 +13,7 @@ public class UserResponse {
     // Constructors
     public UserResponse() {}
 
+    @SuppressWarnings("java:S107")
     public UserResponse(Long id, String firstName, String lastName, String email, String phone, String role, String status, String profileImage) {
         this.id = id;
         this.firstName = firstName;

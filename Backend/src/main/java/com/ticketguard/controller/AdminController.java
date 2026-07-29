@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class AdminController {
 
+    private static final String ADMIN_USER_NOT_FOUND = "Admin user not found";
+
     @Autowired
     private AdminService adminService;
 
@@ -78,7 +80,7 @@ public class AdminController {
             @RequestParam String reportName,
             @RequestParam String reportType) {
         User admin = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ADMIN_USER_NOT_FOUND));
         Report report = adminService.generateReport(reportName, reportType, admin.getId());
         return ResponseEntity.ok(report);
     }
@@ -87,7 +89,7 @@ public class AdminController {
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userRepository.findAll().stream()
                 .map(userService::mapToUserResponse)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(users);
     }
 
@@ -96,7 +98,7 @@ public class AdminController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
         User admin = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ADMIN_USER_NOT_FOUND));
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
@@ -133,7 +135,7 @@ public class AdminController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
         User admin = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ADMIN_USER_NOT_FOUND));
         SeatLayout seat = adminService.toggleSeatStatus(id);
         adminService.logAdminAction(admin.getId(), "TOGGLED SEAT STATUS: Row " + seat.getRowName() + seat.getSeatNumber() + " -> " + seat.getStatus(), "seat_layouts", seat.getId());
         return ResponseEntity.ok(seat);

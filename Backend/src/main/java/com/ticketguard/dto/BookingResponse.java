@@ -22,6 +22,7 @@ public class BookingResponse {
     // Constructors
     public BookingResponse() {}
 
+    @SuppressWarnings("java:S107")
     public BookingResponse(Long bookingId, String bookingNumber, Long eventId, String eventTitle, String venueName, String eventDate, String eventTime, BigDecimal totalAmount, String bookingStatus, String paymentStatus, List<String> seatNames, LocalDateTime reservationExpiry, String qrCode) {
         this.bookingId = bookingId;
         this.bookingNumber = bookingNumber;

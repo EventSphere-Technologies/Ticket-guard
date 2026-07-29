@@ -65,6 +65,7 @@ public class Event {
     // Constructors
     public Event() {}
 
+    @SuppressWarnings("java:S107")
     public Event(Long id, String title, String description, String category, String artistName, Venue venue, LocalDate eventDate, LocalTime eventTime, String bannerImage, BigDecimal ticketPrice, EventStatus status, User createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = title;

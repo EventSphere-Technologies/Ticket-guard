@@ -14,7 +14,9 @@ public class SeatReserveRequest {
     private BehaviourTelemetry behaviour;
 
     // Default Constructor
-    public SeatReserveRequest() {}
+    public SeatReserveRequest() {
+        // Default constructor for JSON deserialization
+    }
 
     // Getters and Setters
     public Long getEventId() { return eventId; }
@@ -36,7 +38,9 @@ public class SeatReserveRequest {
         private String deviceFingerprint;
 
         // Default Constructor
-        public BehaviourTelemetry() {}
+        public BehaviourTelemetry() {
+            // Default constructor for JSON deserialization
+        }
 
         // Getters and Setters
         public double getTimeSpentSeconds() { return timeSpentSeconds; }

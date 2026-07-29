@@ -11,6 +11,8 @@ import com.ticketguard.repository.BookingSeatRepository;
 import com.ticketguard.repository.LoginHistoryRepository;
 import com.ticketguard.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,11 @@ import java.util.Random;
 @Service
 public class AiFraudService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiFraudService.class);
+    private static final String AUTO_BLOCKED_ACTION = "AUTO-BLOCKED BOOKING & SUSPENDED USER";
+    private static final String ACTION_ALLOW = "ALLOW";
+    private static final String FLAGGED_FOR_REVIEW = "FLAGGED FOR REVIEW";
+
     private final Random random = new java.security.SecureRandom();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -35,7 +42,6 @@ public class AiFraudService {
 
     @Autowired
     private BookingSeatRepository bookingSeatRepository;
-
 
     @Autowired
     private AiFraudLogRepository aiFraudLogRepository;
@@ -60,142 +66,148 @@ public class AiFraudService {
     @Transactional
     public double scanBookingForFraud(Booking booking, SeatReserveRequest.BehaviourTelemetry behaviour) {
         try {
-            // Get client IP and User-Agent from RequestContextHolder
-            String ipAddress = "127.0.0.1";
-            String userAgent = "Unknown";
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes != null) {
-                HttpServletRequest request = attributes.getRequest();
-                ipAddress = request.getRemoteAddr();
-                userAgent = request.getHeader("User-Agent");
-                // Check if behind proxy
-                String forwardedFor = request.getHeader("X-Forwarded-For");
-                if (forwardedFor != null && !forwardedFor.isEmpty()) {
-                    ipAddress = forwardedFor.split(",")[0].trim();
-                }
-            }
+            String[] clientInfo = extractClientIpAndUserAgent();
+            String ipAddress = clientInfo[0];
+            String userAgent = clientInfo[1];
 
-            // Count total tickets booked by this user for this specific event
-            long userTicketCount = 0;
-            List<Booking> userBookings = bookingRepository.findByUserId(booking.getUser().getId());
-            if (userBookings != null) {
-                for (Booking ub : userBookings) {
-                    if (ub.getBookingStatus() != Booking.BookingStatus.CANCELLED && ub.getEvent().getId().equals(booking.getEvent().getId())) {
-                        userTicketCount += bookingSeatRepository.findByBookingId(ub.getId()).size();
-                    }
-                }
-            }
+            long userTicketCount = countUserBookingsForEvent(booking);
+            log.info("Total ticket count for User {} on Event {}: {}", booking.getUser().getEmail(), booking.getEvent().getTitle(), userTicketCount);
 
-            System.out.println("Total ticket count for User " + booking.getUser().getEmail() + " on Event " + booking.getEvent().getTitle() + ": " + userTicketCount);
-
-            // If user has booked more than 8 tickets, we print diagnostic info and proceed to AI validation
             if (userTicketCount > 8) {
-                System.out.println("User has booked " + userTicketCount + " tickets (exceeding limit of 8 for this event). Running strict AI verification.");
+                log.info("User has booked {} tickets (exceeding limit of 8 for this event). Running strict AI verification.", userTicketCount);
             }
 
-            // Count historical active bookings from this IP address for rate limit safeguard
-            long ipBookingCount = 0;
-            List<LoginHistory> ipLogins = loginHistoryRepository.findByIpAddress(ipAddress);
-            if (ipLogins != null) {
-                java.util.Set<Long> userIds = ipLogins.stream()
-                        .map(lh -> lh.getUser().getId())
-                        .collect(java.util.stream.Collectors.toSet());
-                for (Long userId : userIds) {
-                    ipBookingCount += bookingRepository.findByUserId(userId).stream()
-                            .filter(b -> b.getBookingStatus() != Booking.BookingStatus.CANCELLED)
-                            .count();
-                }
-            }
-
-            System.out.println("IP Booking Velocity for " + ipAddress + ": " + ipBookingCount + " active bookings.");
+            long ipBookingCount = countIpBookings(ipAddress);
+            log.info("IP Booking Velocity for {}: {} active bookings.", ipAddress, ipBookingCount);
 
             if (ipBookingCount >= 15) {
                 double riskScore = 100.0;
                 String reason = "Security Exception: Rate limit exceeded. More than 15 active bookings (" + ipBookingCount + ") detected from the same IP address (" + ipAddress + ").";
-                
-                User user = booking.getUser();
-                user.setStatus(User.UserStatus.BLOCKED);
-                userRepository.save(user);
-
-                booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
-                bookingRepository.save(booking);
-
-                // Release seats immediately
-                bookingService.releaseSeatsForCancelledBooking(booking.getId());
-
-                saveFraudLog(user, booking, riskScore, reason, "AUTO-BLOCKED BOOKING & SUSPENDED USER", behaviour, true);
+                autoBlockUserAndBooking(booking, riskScore, reason, behaviour, true);
                 return riskScore;
             }
 
-            int ticketQty = bookingSeatRepository.findByBookingId(booking.getId()).size();
+            Map<String, Object> requestBody = buildFraudRequestBody(booking, ipAddress, userAgent, behaviour);
 
-            // Construct payload
-            Map<String, Object> bookingPayload = new HashMap<>();
-            bookingPayload.put("booking_id", booking.getBookingNumber() != null ? booking.getBookingNumber() : String.valueOf(booking.getId()));
-            bookingPayload.put("user_id", String.valueOf(booking.getUser().getId()));
-            bookingPayload.put("event_id", String.valueOf(booking.getEvent().getId()));
-            bookingPayload.put("ticket_quantity", ticketQty > 0 ? ticketQty : 1);
-            bookingPayload.put("total_amount", booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0);
-            bookingPayload.put("currency", "USD");
-            bookingPayload.put("payment_method", "CREDIT_CARD");
-            bookingPayload.put("timestamp", java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now()));
-            bookingPayload.put("ip_address", ipAddress);
-            bookingPayload.put("user_agent", userAgent);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("booking", bookingPayload);
-
-            if (behaviour != null) {
-                Map<String, Object> behaviourPayload = new HashMap<>();
-                behaviourPayload.put("time_spent_seconds", behaviour.getTimeSpentSeconds());
-                behaviourPayload.put("mouse_movement_entropy", behaviour.getMouseMovementEntropy());
-                behaviourPayload.put("keystroke_velocity", behaviour.getKeystrokeVelocity());
-                behaviourPayload.put("pages_visited", behaviour.getPagesVisited());
-                behaviourPayload.put("failed_attempts", behaviour.getFailedAttempts());
-                behaviourPayload.put("is_headless_browser", behaviour.isHeadlessBrowser());
-                behaviourPayload.put("device_fingerprint", behaviour.getDeviceFingerprint());
-                requestBody.put("behaviour", behaviourPayload);
-            }
-
-            // Post to GenAI fraud microservice
-            System.out.println("Calling GenAI fraud detection at: " + genaiFraudServiceUrl);
+            log.info("Calling GenAI fraud detection at: {}", genaiFraudServiceUrl);
             FraudDetectionResponse response = restTemplate.postForObject(genaiFraudServiceUrl, requestBody, FraudDetectionResponse.class);
 
             if (response != null && "SUCCESS".equals(response.getStatus()) && response.getRiskAssessment() != null) {
-                double riskScore = response.getRiskAssessment().getRiskScore();
-                String decision = response.getDecisionResult() != null ? response.getDecisionResult().getDecision() : "ALLOW";
-                String reason = response.getDecisionResult() != null ? response.getDecisionResult().getReasoning() : "No reasoning provided by GenAI.";
-                boolean isBot = response.getRiskAssessment().isBot();
-
-                System.out.println("GenAI Fraud Evaluation Result - Score: " + riskScore + ", Decision: " + decision + ", isBot: " + isBot);
-
-                // Perform action based on GenAI response
-                if ("BLOCK".equals(decision) || riskScore >= 85.0 || isBot) {
-                    User user = booking.getUser();
-                    user.setStatus(User.UserStatus.BLOCKED);
-                    userRepository.save(user);
-
-                    booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
-                    bookingRepository.save(booking);
-
-                    // Release seats immediately
-                    bookingService.releaseSeatsForCancelledBooking(booking.getId());
-
-                    saveFraudLog(user, booking, riskScore, reason, "AUTO-BLOCKED BOOKING & SUSPENDED USER", behaviour, isBot);
-                    return riskScore;
-                } else if ("FLAG_FOR_REVIEW".equals(decision) || riskScore >= 60.0) {
-                    saveFraudLog(booking.getUser(), booking, riskScore, reason, "FLAGGED FOR REVIEW", behaviour, isBot);
-                } else {
-                    saveFraudLog(booking.getUser(), booking, riskScore, reason, "ALLOW", behaviour, isBot);
-                }
-                return riskScore;
+                return handleFraudResponse(booking, response, behaviour);
             } else {
-                throw new RuntimeException("Empty or unsuccessful response from GenAI microservice");
+                throw new IllegalStateException("Empty or unsuccessful response from GenAI microservice");
             }
         } catch (Exception e) {
-            System.err.println("Error calling GenAI microservice: " + e.getMessage() + ". Falling back to local rule-based simulation.");
+            log.error("Error calling GenAI microservice: {}. Falling back to local rule-based simulation.", e.getMessage());
             return scanBookingForFraudLocalFallback(booking, behaviour);
         }
+    }
+
+    private String[] extractClientIpAndUserAgent() {
+        String ipAddress = "127.0.0.1";
+        String userAgent = "Unknown";
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            ipAddress = request.getRemoteAddr();
+            userAgent = request.getHeader("User-Agent");
+            String forwardedFor = request.getHeader("X-Forwarded-For");
+            if (forwardedFor != null && !forwardedFor.isEmpty()) {
+                ipAddress = forwardedFor.split(",")[0].trim();
+            }
+        }
+        return new String[]{ipAddress, userAgent};
+    }
+
+    private long countUserBookingsForEvent(Booking booking) {
+        long userTicketCount = 0;
+        List<Booking> userBookings = bookingRepository.findByUserId(booking.getUser().getId());
+        if (userBookings != null) {
+            for (Booking ub : userBookings) {
+                if (ub.getBookingStatus() != Booking.BookingStatus.CANCELLED && ub.getEvent().getId().equals(booking.getEvent().getId())) {
+                    userTicketCount += bookingSeatRepository.findByBookingId(ub.getId()).size();
+                }
+            }
+        }
+        return userTicketCount;
+    }
+
+    private long countIpBookings(String ipAddress) {
+        long ipBookingCount = 0;
+        List<LoginHistory> ipLogins = loginHistoryRepository.findByIpAddress(ipAddress);
+        if (ipLogins != null) {
+            java.util.Set<Long> userIds = ipLogins.stream()
+                    .map(lh -> lh.getUser().getId())
+                    .collect(java.util.stream.Collectors.toSet());
+            for (Long userId : userIds) {
+                ipBookingCount += bookingRepository.findByUserId(userId).stream()
+                        .filter(b -> b.getBookingStatus() != Booking.BookingStatus.CANCELLED)
+                        .count();
+            }
+        }
+        return ipBookingCount;
+    }
+
+    private Map<String, Object> buildFraudRequestBody(Booking booking, String ipAddress, String userAgent, SeatReserveRequest.BehaviourTelemetry behaviour) {
+        int ticketQty = bookingSeatRepository.findByBookingId(booking.getId()).size();
+        Map<String, Object> bookingPayload = new HashMap<>();
+        bookingPayload.put("booking_id", booking.getBookingNumber() != null ? booking.getBookingNumber() : String.valueOf(booking.getId()));
+        bookingPayload.put("user_id", String.valueOf(booking.getUser().getId()));
+        bookingPayload.put("event_id", String.valueOf(booking.getEvent().getId()));
+        bookingPayload.put("ticket_quantity", ticketQty > 0 ? ticketQty : 1);
+        bookingPayload.put("total_amount", booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0);
+        bookingPayload.put("currency", "USD");
+        bookingPayload.put("payment_method", "CREDIT_CARD");
+        bookingPayload.put("timestamp", java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now()));
+        bookingPayload.put("ip_address", ipAddress);
+        bookingPayload.put("user_agent", userAgent);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("booking", bookingPayload);
+
+        if (behaviour != null) {
+            Map<String, Object> behaviourPayload = new HashMap<>();
+            behaviourPayload.put("time_spent_seconds", behaviour.getTimeSpentSeconds());
+            behaviourPayload.put("mouse_movement_entropy", behaviour.getMouseMovementEntropy());
+            behaviourPayload.put("keystroke_velocity", behaviour.getKeystrokeVelocity());
+            behaviourPayload.put("pages_visited", behaviour.getPagesVisited());
+            behaviourPayload.put("failed_attempts", behaviour.getFailedAttempts());
+            behaviourPayload.put("is_headless_browser", behaviour.isHeadlessBrowser());
+            behaviourPayload.put("device_fingerprint", behaviour.getDeviceFingerprint());
+            requestBody.put("behaviour", behaviourPayload);
+        }
+        return requestBody;
+    }
+
+    private double handleFraudResponse(Booking booking, FraudDetectionResponse response, SeatReserveRequest.BehaviourTelemetry behaviour) {
+        double riskScore = response.getRiskAssessment().getRiskScore();
+        String decision = response.getDecisionResult() != null ? response.getDecisionResult().getDecision() : ACTION_ALLOW;
+        String reason = response.getDecisionResult() != null ? response.getDecisionResult().getReasoning() : "No reasoning provided by GenAI.";
+        boolean isBot = response.getRiskAssessment().isBot();
+
+        log.info("GenAI Fraud Evaluation Result - Score: {}, Decision: {}, isBot: {}", riskScore, decision, isBot);
+
+        if ("BLOCK".equals(decision) || riskScore >= 85.0 || isBot) {
+            autoBlockUserAndBooking(booking, riskScore, reason, behaviour, isBot);
+            return riskScore;
+        } else if ("FLAG_FOR_REVIEW".equals(decision) || riskScore >= 60.0) {
+            saveFraudLog(booking.getUser(), booking, riskScore, reason, FLAGGED_FOR_REVIEW, behaviour, isBot);
+        } else {
+            saveFraudLog(booking.getUser(), booking, riskScore, reason, ACTION_ALLOW, behaviour, isBot);
+        }
+        return riskScore;
+    }
+
+    private void autoBlockUserAndBooking(Booking booking, double riskScore, String reason, SeatReserveRequest.BehaviourTelemetry behaviour, boolean isBot) {
+        User user = booking.getUser();
+        user.setStatus(User.UserStatus.BLOCKED);
+        userRepository.save(user);
+
+        booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+
+        bookingService.releaseSeatsForCancelledBooking(booking.getId());
+        saveFraudLog(user, booking, riskScore, reason, AUTO_BLOCKED_ACTION, behaviour, isBot);
     }
 
     @Transactional
@@ -203,9 +215,38 @@ public class AiFraudService {
         User user = booking.getUser();
         double riskScore = 0.0;
         StringBuilder reasons = new StringBuilder();
-        boolean isBot = false;
 
-        // 1. Telemetry-based Bot Rules Heuristics
+        riskScore += calculateTelemetryRisk(behaviour, reasons);
+        riskScore += calculateLocationMismatchRisk(user, reasons);
+
+        if (random.nextDouble() > 0.90) {
+            riskScore += 45.0;
+            reasons.append("High-speed automation signature / Bot patterns detected. ");
+        }
+
+        riskScore += calculateMultiBookingRisk(user, booking, reasons);
+
+        if (riskScore == 0.0) {
+            riskScore = 5.0 + (random.nextDouble() * 15.0);
+        }
+
+        boolean isBot = (riskScore >= 85.0);
+        String actionTaken = ACTION_ALLOW;
+        if (riskScore >= 85.0) {
+            autoBlockUserAndBooking(booking, riskScore, reasons.toString().trim(), behaviour, isBot);
+            actionTaken = AUTO_BLOCKED_ACTION;
+        } else if (riskScore >= 60.0) {
+            actionTaken = FLAGGED_FOR_REVIEW;
+            saveFraudLog(user, booking, riskScore, reasons.toString().trim(), actionTaken, behaviour, isBot);
+        } else {
+            saveFraudLog(user, booking, riskScore, reasons.toString().trim(), actionTaken, behaviour, isBot);
+        }
+
+        return riskScore;
+    }
+
+    private double calculateTelemetryRisk(SeatReserveRequest.BehaviourTelemetry behaviour, StringBuilder reasons) {
+        double riskScore = 0.0;
         if (behaviour != null) {
             if (behaviour.getTimeSpentSeconds() > 0 && behaviour.getTimeSpentSeconds() < 2.0) {
                 riskScore += 50.0;
@@ -224,65 +265,32 @@ public class AiFraudService {
                 reasons.append("Headless browser session detected. ");
             }
         }
+        return riskScore;
+    }
 
-        // 2. Check Login History (Location Mismatch Simulation)
+    private double calculateLocationMismatchRisk(User user, StringBuilder reasons) {
         List<LoginHistory> logins = loginHistoryRepository.findByUserIdOrderByLoginTimeDesc(user.getId());
         if (logins.size() >= 2) {
             LoginHistory latest = logins.get(0);
             LoginHistory previous = logins.get(1);
             if (latest.getIpAddress() != null && !latest.getIpAddress().equals(previous.getIpAddress())) {
-                riskScore += 30.0;
                 reasons.append("Location Mismatch detected between recent login sessions. ");
+                return 30.0;
             }
         }
+        return 0.0;
+    }
 
-        // 3. High-speed Booking / Bot check simulation (fallback random flag)
-        if (random.nextDouble() > 0.90) {
-            riskScore += 45.0;
-            reasons.append("High-speed automation signature / Bot patterns detected. ");
-        }
-
-        // 4. Multi-booking flood check
+    private double calculateMultiBookingRisk(User user, Booking booking, StringBuilder reasons) {
         List<Booking> userBookings = bookingRepository.findByUserId(user.getId());
         long recentBookings = userBookings.stream()
                 .filter(b -> b.getBookingDate().isAfter(booking.getBookingDate().minusMinutes(5)))
                 .count();
         if (recentBookings > 2) {
-            riskScore += 20.0;
             reasons.append("Multiple rapid bookings within 5 minutes. ");
+            return 20.0;
         }
-
-        // Apply fallback base risk for demonstration if no flags hit
-        if (riskScore == 0.0) {
-            riskScore = 5.0 + (random.nextDouble() * 15.0); // 5-20% baseline
-        }
-
-        if (riskScore >= 85.0) {
-            isBot = true;
-        }
-
-        // Action logging based on score
-        String actionTaken = "ALLOW";
-        if (riskScore >= 85.0) {
-            actionTaken = "AUTO-BLOCKED BOOKING & SUSPENDED USER";
-            
-            // Suspend user
-            user.setStatus(User.UserStatus.BLOCKED);
-            userRepository.save(user);
-
-            // Cancel Booking
-            booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
-
-            // Release seats immediately
-            bookingService.releaseSeatsForCancelledBooking(booking.getId());
-        } else if (riskScore >= 60.0) {
-            actionTaken = "FLAGGED FOR REVIEW";
-        }
-
-        saveFraudLog(user, booking, riskScore, reasons.toString().trim(), actionTaken, behaviour, isBot);
-
-        return riskScore;
+        return 0.0;
     }
 
 

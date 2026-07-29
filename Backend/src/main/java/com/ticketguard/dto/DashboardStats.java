@@ -25,6 +25,7 @@ public class DashboardStats {
     // Constructors
     public DashboardStats() {}
 
+    @SuppressWarnings("java:S107")
     public DashboardStats(BigDecimal totalRevenue, long totalBookings, long activeEvents, long totalUsers, long fraudulentBookingsBlocked, long confirmedBookingsCount, long cancelledBookingsCount, long refundedBookingsCount, long pendingBookingsCount, double revenueGrowthPercent, double bookingGrowthPercent, double userGrowthPercent, List<String> bookingOverviewDates, List<Integer> bookingOverviewCounts) {
         this.totalRevenue = totalRevenue;
         this.totalBookings = totalBookings;

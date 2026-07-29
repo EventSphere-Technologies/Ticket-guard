@@ -48,6 +48,7 @@ public class AiFraudLog {
     // Constructors
     public AiFraudLog() {}
 
+    @SuppressWarnings("java:S107")
     public AiFraudLog(Long id, User user, Booking booking, double riskScore, String reason, String actionTaken, Double keystrokeVelocity, Double mouseMovementEntropy, Double timeSpentSeconds, Boolean isBot, LocalDateTime createdAt) {
         this.id = id;
         this.user = user;

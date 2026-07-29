@@ -48,6 +48,7 @@ public class User {
     // Constructors
     public User() {}
 
+    @SuppressWarnings("java:S107")
     public User(Long id, String firstName, String lastName, String email, String phone, String password, UserRole role, UserStatus status, String profileImage, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.firstName = firstName;

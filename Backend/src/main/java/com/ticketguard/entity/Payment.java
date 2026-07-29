@@ -40,6 +40,7 @@ public class Payment {
     // Constructors
     public Payment() {}
 
+    @SuppressWarnings("java:S107")
     public Payment(Long id, Booking booking, String paymentMethod, String transactionId, BigDecimal amount, PaymentStatus paymentStatus, LocalDateTime paymentTime, String gatewayResponse) {
         this.id = id;
         this.booking = booking;

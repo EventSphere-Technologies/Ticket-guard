@@ -16,6 +16,7 @@ public class PaymentResponse {
     // Constructors
     public PaymentResponse() {}
 
+    @SuppressWarnings("java:S107")
     public PaymentResponse(Long paymentId, Long bookingId, String transactionId, BigDecimal amount, String paymentStatus, LocalDateTime paymentTime, String qrCode, String message) {
         this.paymentId = paymentId;
         this.bookingId = bookingId;
