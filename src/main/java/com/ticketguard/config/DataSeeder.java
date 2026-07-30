@@ -129,6 +129,10 @@ public class DataSeeder implements CommandLineRunner {
                 .findFirst().orElse(null);
 
         // 3. Seed Default Events
+        if (admin == null) {
+            // Cannot seed events without an admin user — skip safely
+            return;
+        }
         if (eventRepository.count() == 0) {
             Event event1 = Event.builder()
                     .title("Arijit Singh Live Concert")

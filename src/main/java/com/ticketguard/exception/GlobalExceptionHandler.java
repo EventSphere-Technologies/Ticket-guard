@@ -3,6 +3,7 @@ package com.ticketguard.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -60,6 +61,17 @@ public class GlobalExceptionHandler {
         body.put(KEY_MESSAGE, "Validation failed for one or more fields");
         
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, WebRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put(KEY_TIMESTAMP, LocalDateTime.now());
+        body.put(KEY_STATUS, HttpStatus.METHOD_NOT_ALLOWED.value());
+        body.put(KEY_ERROR, "Method Not Allowed");
+        body.put(KEY_MESSAGE, ex.getMethod() + " method is not supported for this endpoint. Supported methods: " + ex.getSupportedHttpMethods());
+        body.put(KEY_PATH, request.getDescription(false).replace("uri=", ""));
+        return new ResponseEntity<>(body, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(Exception.class)

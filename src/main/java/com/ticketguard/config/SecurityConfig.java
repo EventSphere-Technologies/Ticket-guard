@@ -26,11 +26,14 @@ import org.springframework.http.HttpMethod;
 public class SecurityConfig {
 
     @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:4200}")
-    private java.util.List<String> allowedOriginsList;
+    private String allowedOriginsRaw;
 
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
+        java.util.List<String> allowedOriginsList = java.util.Arrays.stream(allowedOriginsRaw.split(","))
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.toList());
         configuration.setAllowedOrigins(allowedOriginsList);
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Cache-Control", "Content-Type", "Origin", "Accept"));

@@ -101,6 +101,7 @@ public class EventService {
         seatLayoutRepository.saveAll(seats);
     }
 
+    @Transactional(readOnly = true)
     public List<SeatLayout> getSeatsWithStatus(Long eventId) {
         Event event = getEventById(eventId);
         List<SeatLayout> venueSeats = seatLayoutRepository.findByVenueId(event.getVenue().getId());
