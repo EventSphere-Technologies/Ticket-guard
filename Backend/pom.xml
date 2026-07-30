@@ -11,6 +11,7 @@
 	<groupId>com</groupId>
 	<artifactId>ticketguard</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<packaging>war</packaging>
 	<name>ticketguard</name>
 	<description>TicketGuard Event Ticket Booking Backend Platform</description>
 	<properties>
@@ -83,6 +84,13 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Exclude embedded Tomcat for external Tomcat 10 deployment -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-tomcat</artifactId>
+			<scope>provided</scope>
 		</dependency>
 
 		<!-- Test Starter -->
