@@ -1,0 +1,65 @@
+<div class="navbar" *ngIf="currentUser">
+  <!-- Topbar Brand Title for context -->
+  <div class="topbar-title">
+    <span *ngIf="currentUser.role === 'ADMIN'">🛡️ Admin Dashboard</span>
+    <span *ngIf="currentUser.role !== 'ADMIN'">👋 Hello, {{ currentUser.firstName }}</span>
+  </div>
+
+  <div class="nav-user-area">
+    <!-- Notifications -->
+    <div class="notification-wrapper" *ngIf="currentUser.role !== 'ADMIN'">
+      <button class="notif-btn" (click)="toggleNotif()">
+        <span class="badge" *ngIf="getUnreadCount() > 0">{{ getUnreadCount() }}</span>
+        🔔
+      </button>
+
+      <div class="notif-dropdown" *ngIf="showNotifDropdown">
+        <div class="notif-header">Notifications</div>
+        <div class="notif-body">
+          <div class="notif-empty" *ngIf="notifications.length === 0">No notifications</div>
+          <div class="notif-item" *ngFor="let notif of notifications" [class.unread]="!notif.isRead" (click)="markRead(notif.id, $event)">
+            <div class="notif-title">{{ notif.title }}</div>
+            <div class="notif-msg">{{ notif.message }}</div>
+            <span class="mark-read-hint" *ngIf="!notif.isRead">Mark Read</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Reservations Cart Dropdown -->
+    <div class="cart-wrapper" *ngIf="currentUser.role !== 'ADMIN'">
+      <button class="cart-btn" (click)="toggleCart()">
+        <span class="badge" *ngIf="cartItems.length > 0">{{ cartItems.length }}</span>
+        🛒
+      </button>
+
+      <div class="cart-dropdown" *ngIf="showCartDropdown">
+        <div class="cart-header">Reserved Tickets</div>
+        <div class="cart-body">
+          <div class="cart-empty" *ngIf="cartItems.length === 0">No active reservations</div>
+          <div class="cart-item" *ngFor="let item of cartItems">
+            <div class="cart-item-info">
+              <div class="cart-item-title">{{ item.eventDetails?.title }}</div>
+              <div class="cart-item-seats">Seats: {{ getSeatsString(item) }}</div>
+              <div class="cart-item-price">Total: ₹{{ item.bookingDetails?.totalAmount }}</div>
+            </div>
+            <div class="cart-item-actions">
+              <div class="cart-timer" [class.warning]="item.timeRemaining < 60">⌛ {{ item.timerDisplay }}</div>
+              <button class="cart-checkout-btn" (click)="checkoutCartItem(item)">Pay</button>
+              <button class="cart-remove-btn" (click)="removeCartItem(item, $event)">✖</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile Badge -->
+    <div class="user-profile-badge">
+      <div class="avatar">{{ currentUser.firstName[0] }}</div>
+      <div class="user-info">
+        <span class="name">{{ currentUser.firstName }} {{ currentUser.lastName }}</span>
+        <span class="role" style="font-size: 9px; color: var(--text-secondary);">{{ currentUser.email }}</span>
+      </div>
+    </div>
+  </div>
+</div>

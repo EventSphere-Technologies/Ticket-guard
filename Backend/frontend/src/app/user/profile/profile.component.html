@@ -1,0 +1,48 @@
+<div class="user-layout">
+  <!-- Left Navigation Sidebar -->
+  <app-sidebar></app-sidebar>
+
+  <div class="user-content-area">
+    <!-- Topbar search/profile -->
+    <app-navbar></app-navbar>
+
+    <div class="user-container">
+      <div class="profile-header" style="margin-bottom: 30px;">
+        <h2>My Profile</h2>
+      </div>
+
+      <!-- Loader -->
+      <div class="loader-container" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading your profile details...</p>
+      </div>
+
+      <!-- Profile Card -->
+      <div class="profile-card-container" *ngIf="!loading && profile" style="max-width: 600px; margin: 0 auto;">
+        <div class="auth-glass-card" style="max-width: 100%;">
+          <div class="profile-avatar-large" style="width: 100px; height: 100px; background: var(--accent-purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; margin: 0 auto 20px;">
+            {{ profile.firstName[0] }}
+          </div>
+          
+          <h3 style="text-align: center; font-size: 24px; margin-bottom: 8px;">{{ profile.firstName }} {{ profile.lastName }}</h3>
+          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 24px;">{{ profile.role === 'ADMIN' ? 'System Administrator' : 'Verified Customer' }}</p>
+
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="text" [value]="profile.email" disabled style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); color: var(--text-secondary);">
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" [value]="profile.phone || 'Not provided'" disabled style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); color: var(--text-secondary);">
+          </div>
+
+          <div class="form-group">
+            <label>Security Status</label>
+            <input type="text" [value]="profile.status" disabled style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.2); color: var(--color-success); font-weight: 600; text-transform: uppercase;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

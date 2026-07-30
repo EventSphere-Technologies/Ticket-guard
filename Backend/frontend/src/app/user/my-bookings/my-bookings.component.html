@@ -1,0 +1,181 @@
+<div class="user-layout">
+  <!-- Left Navigation Sidebar -->
+  <app-sidebar></app-sidebar>
+
+  <div class="user-content-area">
+    <!-- Topbar search/profile -->
+    <app-navbar></app-navbar>
+
+    <div class="user-container">
+      <div class="bookings-header">
+        <h2>My Bookings</h2>
+      </div>
+
+      <!-- Tabs matching the mockup design -->
+      <div class="bookings-tabs">
+        <button [class.active]="selectedTab === 'UPCOMING'" (click)="selectTab('UPCOMING')">Upcoming</button>
+        <button [class.active]="selectedTab === 'COMPLETED'" (click)="selectTab('COMPLETED')">Completed</button>
+        <button [class.active]="selectedTab === 'CANCELLED'" (click)="selectTab('CANCELLED')">Cancelled</button>
+      </div>
+
+      <!-- Loader -->
+      <div class="loader-container" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading your booking history...</p>
+      </div>
+
+      <!-- Bookings Cards -->
+      <div class="bookings-list" *ngIf="!loading">
+        <div class="booking-item-card" *ngFor="let booking of filteredBookings">
+          <div class="booking-meta-details">
+            <div class="meta-main">
+              <h3>{{ booking.eventTitle }}</h3>
+              <p class="venue">📍 {{ booking.venueName }}</p>
+              <p class="datetime">📅 {{ booking.eventDate }} at {{ booking.eventTime }}</p>
+              
+              <div class="seats-info">
+                <span class="label">Seat(s):</span>
+                <span class="val">{{ booking.seatNames?.join(', ') }}</span>
+              </div>
+              
+              <div class="price-info">
+                <span class="label">Amount:</span>
+                <span class="val">₹{{ booking.totalAmount }}</span>
+              </div>
+
+              <div class="status-info">
+                <span class="status-badge" [class]="booking.bookingStatus.toLowerCase()">
+                  {{ booking.bookingStatus }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Actions & Ticket Details -->
+            <div class="booking-actions">
+              <!-- QR Verification Link if confirmed -->
+              <div class="ticket-qr-section" *ngIf="booking.bookingStatus === 'CONFIRMED'">
+                <div class="qr-thumbnail">
+                  <svg width="60" height="60" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="120" height="120" fill="white"/>
+                    <rect x="10" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                    <rect x="80" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                    <rect x="10" y="80" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                    <rect x="50" y="50" width="20" height="20" fill="black"/>
+                  </svg>
+                </div>
+                <a (click)="openTicketModal(booking, $event)" class="view-ticket-link" style="cursor: pointer;">View Ticket</a>
+              </div>
+
+              <button class="btn-cancel" *ngIf="booking.bookingStatus === 'CONFIRMED'" (click)="cancelBooking(booking.bookingId)">
+                Cancel Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="filteredBookings.length === 0">
+          <h3>No bookings found</h3>
+          <p>You don't have any bookings in the {{ selectedTab.toLowerCase() }} category.</p>
+          <button class="btn-primary" routerLink="/dashboard">Explore Upcoming Events</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Modal Popup -->
+    <div class="ticket-modal-overlay" *ngIf="showTicketModal" (click)="closeTicketModal()">
+      <div class="ticket-modal-card" (click)="$event.stopPropagation()">
+        <!-- Close button -->
+        <button class="modal-close-btn" (click)="closeTicketModal()">✖</button>
+        
+        <!-- Ticket Design -->
+        <div class="ticket-modal-banner" *ngIf="selectedBookingEvent" style="position: relative; overflow: hidden; background: linear-gradient(135deg, #0B0F19 0%, #1E1B4B 100%);">
+          <img [src]="selectedBookingEvent.bannerImage || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=800'" alt="Event Poster" style="width: 100%; height: 100%; object-fit: cover; display: block;" (error)="onImgError($event)">
+        </div>
+        <div class="ticket-main-box">
+          <div class="ticket-left-section">
+            <div class="ticket-brand">🛡️ TicketGuard Pass</div>
+            <h2 class="ticket-title">{{ selectedBooking?.eventTitle }}</h2>
+            
+            <div class="ticket-details-grid">
+              <div class="detail-item">
+                <span class="detail-label">DATE & TIME</span>
+                <span class="detail-val">{{ selectedBooking?.eventDate }} at {{ selectedBooking?.eventTime }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">VENUE</span>
+                <span class="detail-val">{{ selectedBooking?.venueName }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">SEAT(S)</span>
+                <span class="detail-val">{{ selectedBooking?.seatNames?.join(', ') }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">TICKET NO</span>
+                <span class="detail-val">{{ getTicketNumber(selectedBooking) }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ticket-right-section">
+            <div class="ticket-qr-container">
+              <!-- Styled visual SVG QR code -->
+              <svg width="100" height="100" viewBox="0 0 120 120" fill="none">
+                <rect width="120" height="120" fill="white"/>
+                <rect x="10" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                <rect x="80" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                <rect x="10" y="80" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                <rect x="50" y="50" width="20" height="20" fill="black"/>
+                <rect x="50" y="20" width="10" height="20" fill="black"/>
+                <rect x="20" y="50" width="20" height="10" fill="black"/>
+                <rect x="80" y="50" width="10" height="20" fill="black"/>
+                <rect x="50" y="80" width="20" height="10" fill="black"/>
+                <rect x="80" y="80" width="20" height="20" fill="black"/>
+              </svg>
+            </div>
+            <span class="scan-instructions">SCAN TO ENTER</span>
+            <button class="btn-print-ticket" (click)="printTicket()">🖨️ Print Pass</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Special container visible only when printing -->
+    <div class="print-ticket-layout" *ngIf="showTicketModal && selectedBooking">
+      <div class="print-poster-header" *ngIf="selectedBookingEvent">
+        <img [src]="selectedBookingEvent.bannerImage || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200'" alt="Event Poster" class="print-poster-img" (error)="onImgError($event)">
+      </div>
+      
+      <div class="print-ticket-card">
+        <div class="print-ticket-left">
+          <div class="print-brand">🛡️ TICKETGUARD PASS</div>
+          <h1 class="print-title">{{ selectedBooking.eventTitle }}</h1>
+          <div class="print-details">
+            <div class="print-detail"><span class="print-lbl">DATE & TIME:</span> {{ selectedBooking.eventDate }} at {{ selectedBooking.eventTime }}</div>
+            <div class="print-detail"><span class="print-lbl">VENUE:</span> {{ selectedBooking.venueName }}</div>
+            <div class="print-detail"><span class="print-lbl">SEAT(S):</span> {{ selectedBooking.seatNames?.join(', ') }}</div>
+            <div class="print-detail"><span class="print-lbl">TICKET NO:</span> {{ getTicketNumber(selectedBooking) }}</div>
+          </div>
+        </div>
+        <div class="print-ticket-right">
+          <div class="print-qr">
+            <!-- SVG QR code identical to the modal -->
+            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+              <rect width="120" height="120" fill="white"/>
+              <rect x="10" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+              <rect x="80" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+              <rect x="10" y="80" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+              <rect x="50" y="50" width="20" height="20" fill="black"/>
+              <rect x="50" y="20" width="10" height="20" fill="black"/>
+              <rect x="20" y="50" width="20" height="10" fill="black"/>
+              <rect x="80" y="50" width="10" height="20" fill="black"/>
+              <rect x="50" y="80" width="20" height="10" fill="black"/>
+              <rect x="80" y="80" width="20" height="20" fill="black"/>
+            </svg>
+          </div>
+          <div class="print-instructions">SCAN TO ENTER</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

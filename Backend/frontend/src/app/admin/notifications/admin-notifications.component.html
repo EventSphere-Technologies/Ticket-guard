@@ -1,0 +1,38 @@
+<div class="admin-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="admin-content-area">
+    <div class="admin-topbar">
+      <h2>System Audit Logs & Alerts</h2>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader-container" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Fetching system logs...</p>
+    </div>
+
+    <!-- Audit Logs Feed -->
+    <div class="alerts-feed" *ngIf="!loading" style="max-height: none; overflow-y: visible;">
+      <div class="alert-empty-feed" *ngIf="logs.length === 0" style="text-align: center; padding: 40px; border: 1px solid var(--border-glass); border-radius: 16px; background: rgba(255,255,255,0.02);">
+        ✅ No admin audit events logged.
+      </div>
+      
+      <div class="alert-feed-item" *ngFor="let log of logs" 
+        style="padding: 20px 24px; margin-bottom: 16px; border-left: 4px solid var(--accent-purple-light); background: rgba(255,255,255,0.01);">
+        <div class="alert-meta" style="margin-bottom: 8px; font-size: 13px;">
+          <span class="risk-badge" style="color: var(--accent-purple-light); font-weight: 800; text-transform: uppercase;">
+            Action: {{ log.action }}
+          </span>
+          <span class="time" style="color: var(--text-secondary);">📅 {{ log.createdAt | date:'medium' }}</span>
+        </div>
+        <p class="reason" style="font-size: 14px; margin-bottom: 6px; color: var(--text-primary);">
+          Modified Table: <code>{{ log.tableName }}</code> | Record Reference ID: <code>{{ log.recordId || 'N/A' }}</code>
+        </p>
+        <p class="user-email" style="font-size: 12px; color: var(--text-secondary); margin: 0;">
+          Operator Admin User ID: <strong>{{ log.adminId }}</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,92 @@
+<div class="admin-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="admin-content-area">
+    <div class="admin-topbar">
+      <h2>Payments & Refunds</h2>
+      <div class="category-tabs" style="background: var(--bg-secondary); border: 1px solid var(--border-glass);">
+        <button [class.active]="activeTab === 'PAYMENTS'" (click)="activeTab = 'PAYMENTS'">💳 Payments</button>
+        <button [class.active]="activeTab === 'REFUNDS'" (click)="activeTab = 'REFUNDS'">🔄 Refunds</button>
+      </div>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader-container" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Fetching transaction records...</p>
+    </div>
+
+    <!-- Payments List Table -->
+    <div class="admin-table-container" *ngIf="!loading && activeTab === 'PAYMENTS'">
+      <table class="admin-table" aria-label="Payments Transactions List">
+        <thead>
+          <tr>
+            <th>Txn ID</th>
+            <th>Booking Ref</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Gateway Status</th>
+            <th>Date & Time</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of payments">
+            <td><code>{{ p.transactionId }}</code></td>
+            <td><code>{{ p.booking?.bookingNumber }}</code></td>
+            <td>₹{{ p.amount }}</td>
+            <td><span class="category-badge-table" style="background: rgba(91, 61, 245, 0.15); color: var(--accent-purple-light);">{{ p.paymentMethod }}</span></td>
+            <td>
+              <span class="status-badge" [class.confirmed]="p.gatewayResponse === 'SUCCESS' || p.gatewayResponse === 'PAID' || p.gatewayResponse?.includes('success')">
+                SUCCESS
+              </span>
+            </td>
+            <td>{{ p.paymentDate | date:'medium' }}</td>
+            <td>
+              <button 
+                *ngIf="p.booking?.bookingStatus !== 'CANCELLED'"
+                (click)="triggerRefund(p.booking?.id)" 
+                class="btn-cancel" 
+                style="padding: 6px 12px; font-size: 12px;">
+                🔄 Issue Refund
+              </button>
+              <span *ngIf="p.booking?.bookingStatus === 'CANCELLED'" style="color: var(--text-secondary); font-size: 12px;">
+                Refunded/Void
+              </span>
+            </td>
+          </tr>
+          <tr *ngIf="payments.length === 0">
+            <td colspan="7" class="table-empty">No payments logged in the system.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Refunds List Table -->
+    <div class="admin-table-container" *ngIf="!loading && activeTab === 'REFUNDS'">
+      <table class="admin-table" aria-label="Refunds List">
+        <thead>
+          <tr>
+            <th>Refund Ref</th>
+            <th>Booking Ref</th>
+            <th>Refund Amount</th>
+            <th>Reason</th>
+            <th>Processed Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of refunds">
+            <td><code>REF-{{ r.id }}</code></td>
+            <td><code>{{ r.booking?.bookingNumber }}</code></td>
+            <td>₹{{ r.refundAmount }}</td>
+            <td>{{ r.refundReason }}</td>
+            <td>{{ r.createdAt | date:'medium' }}</td>
+          </tr>
+          <tr *ngIf="refunds.length === 0">
+            <td colspan="5" class="table-empty">No refunds processed.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

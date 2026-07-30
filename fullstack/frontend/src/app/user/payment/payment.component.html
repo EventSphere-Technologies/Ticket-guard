@@ -1,0 +1,133 @@
+<div class="user-layout">
+  <!-- Left Navigation Sidebar -->
+  <app-sidebar></app-sidebar>
+
+  <div class="user-content-area">
+    <!-- Topbar search/profile -->
+    <app-navbar></app-navbar>
+
+    <div class="user-container">
+      <!-- Payment Form Screen -->
+      <div class="payment-layout" *ngIf="!success && booking">
+        <div class="payment-main">
+          <div class="payment-card">
+            <h3>Choose Payment Method</h3>
+            
+            <div class="payment-tabs">
+              <button [class.active]="paymentMethod === 'CARD'" (click)="paymentMethod = 'CARD'">💳 Credit/Debit Card</button>
+              <button [class.active]="paymentMethod === 'UPI'" (click)="paymentMethod = 'UPI'">📱 UPI Payment</button>
+            </div>
+
+            <div *ngIf="error" class="error-banner">{{ error }}</div>
+
+            <form (ngSubmit)="onSubmit()" class="payment-form">
+              <!-- Card Fields -->
+              <div *ngIf="paymentMethod === 'CARD'">
+                <div class="form-group">
+                  <label>Card Holder Name</label>
+                  <input type="text" [(ngModel)]="cardHolder" name="cardHolder" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                  <label>Card Number</label>
+                  <input type="text" [(ngModel)]="cardNumber" name="cardNumber" placeholder="1234 5678 9101 1121">
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Expiry Date</label>
+                    <input type="text" [(ngModel)]="cardExpiry" name="cardExpiry" placeholder="MM/YY">
+                  </div>
+                  <div class="form-group">
+                    <label>CVV</label>
+                    <input type="password" [(ngModel)]="cardCvv" name="cardCvv" placeholder="123">
+                  </div>
+                </div>
+              </div>
+
+              <!-- UPI Fields -->
+              <div *ngIf="paymentMethod === 'UPI'">
+                <div class="form-group">
+                  <label>UPI ID (VPA)</label>
+                  <input type="text" [(ngModel)]="upiId" name="upiId" placeholder="john@okaxis">
+                </div>
+              </div>
+
+              <button type="submit" [disabled]="loading" class="btn-primary-block btn-pay">
+                <span *ngIf="!loading">Pay ₹{{ booking.totalAmount }} Now</span>
+                <span *ngIf="loading" class="spinner"></span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Order Summary Sidebar -->
+        <div class="payment-sidebar">
+          <div class="order-summary-card">
+            <h3>Order Summary</h3>
+            <div class="summary-details">
+              <div class="detail-row">
+                <span class="label">Event</span>
+                <span class="val">{{ booking.eventTitle }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Venue</span>
+                <span class="val">{{ booking.venueName }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Seats</span>
+                <span class="val">{{ booking.seatNames?.join(', ') }}</span>
+              </div>
+              
+              <hr class="card-divider">
+
+              <div class="detail-row total-row">
+                <span class="label">Total Amount</span>
+                <span class="val">₹{{ booking.totalAmount }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Success Screen -->
+      <div class="success-screen" *ngIf="success && paymentDetails">
+        <div class="success-card">
+          <div class="tick-icon">✔</div>
+          <h2>Booking Confirmed!</h2>
+          <p class="success-subtitle">Your transaction has been securely processed by TicketGuard.</p>
+          
+          <div class="success-ticket-details">
+            <div class="ticket-meta">
+              <div><strong>Booking Number:</strong> {{ booking.bookingNumber }}</div>
+              <div><strong>Transaction ID:</strong> {{ paymentDetails.transactionId }}</div>
+              <div><strong>Total Paid:</strong> ₹{{ paymentDetails.amount }}</div>
+            </div>
+
+            <!-- QR Code Display -->
+            <div class="qr-code-box">
+              <div class="qr-code-placeholder">
+                <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="120" height="120" fill="white"/>
+                  <rect x="10" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                  <rect x="80" y="10" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                  <rect x="10" y="80" width="30" height="30" fill="black" stroke="white" stroke-width="4"/>
+                  <rect x="50" y="20" width="10" height="20" fill="black"/>
+                  <rect x="50" y="50" width="20" height="10" fill="black"/>
+                  <rect x="20" y="50" width="10" height="10" fill="black"/>
+                  <rect x="80" y="50" width="20" height="20" fill="black"/>
+                  <rect x="100" y="80" width="10" height="30" fill="black"/>
+                  <rect x="50" y="80" width="20" height="20" fill="black"/>
+                </svg>
+              </div>
+              <div class="qr-hint">Scan at venue to verify ticket</div>
+            </div>
+          </div>
+
+          <div class="success-actions">
+            <button class="btn-primary" routerLink="/my-bookings">Go to My Bookings</button>
+            <button class="btn-secondary" (click)="goBack()">Browse More Events</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

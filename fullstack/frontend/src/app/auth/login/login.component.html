@@ -1,0 +1,41 @@
+<div class="auth-container">
+  <div class="auth-glass-card">
+    <div class="auth-header">
+      <div class="logo">Ticket<span>Guard</span></div>
+      <p>Secure Event Ticketing & Bot Regulator</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+
+      <div class="form-group">
+        <label for="email" style="text-transform: uppercase; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;">Email Address</label>
+        <input type="email" id="email" formControlName="email" placeholder="john@example.com"
+          [class.invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
+        <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="validation-error">
+          Please enter a valid email address.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password" style="text-transform: uppercase; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;">Password</label>
+        <input type="password" id="password" formControlName="password" placeholder="••••••••"
+          [class.invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+        <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="validation-error">
+          Password is required.
+        </div>
+      </div>
+
+      <button type="submit" [disabled]="loginForm.invalid || loading" class="btn-primary-block" style="margin-top: 10px;">
+        <span *ngIf="!loading">Proceed to Account</span>
+        <span *ngIf="loading" class="spinner"></span>
+      </button>
+
+      <div class="auth-footer" style="margin-top: 24px;">
+        Don't have an account? <a routerLink="/register">Register here</a>
+      </div>
+    </form>
+  </div>
+</div>

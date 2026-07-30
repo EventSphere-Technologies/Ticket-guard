@@ -1,0 +1,93 @@
+<div class="user-layout">
+  <!-- Left Navigation Sidebar -->
+  <app-sidebar></app-sidebar>
+
+  <div class="user-content-area">
+    <!-- Topbar search/profile -->
+    <app-navbar></app-navbar>
+
+    <div class="user-container">
+      <div class="payment-methods-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Saved Payment Methods</h2>
+        <button class="btn-primary" (click)="showAddForm = !showAddForm">
+          {{ showAddForm ? 'View Saved Methods' : '+ Add New Method' }}
+        </button>
+      </div>
+
+      <!-- Loader -->
+      <div class="loader-container" *ngIf="loading && !showAddForm">
+        <div class="spinner"></div>
+        <p>Loading your saved payment options...</p>
+      </div>
+
+      <!-- Add Form -->
+      <div class="payment-card" *ngIf="showAddForm" style="max-width: 600px; margin: 0 auto;">
+        <h3>Add Payment Method</h3>
+        <div class="payment-tabs" style="margin-bottom: 20px;">
+          <button [class.active]="paymentType === 'CARD'" (click)="paymentType = 'CARD'">💳 Credit/Debit Card</button>
+          <button [class.active]="paymentType === 'UPI'" (click)="paymentType = 'UPI'">📱 UPI Address</button>
+        </div>
+
+        <div *ngIf="error" class="error-banner">{{ error }}</div>
+
+        <form (ngSubmit)="onSubmit()" class="payment-form">
+          <!-- Card Form -->
+          <div *ngIf="paymentType === 'CARD'">
+            <div class="form-group">
+              <label>Card Holder Name</label>
+              <input type="text" [(ngModel)]="cardHolder" name="cardHolder" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+              <label>Last 4 Digits of Card Number</label>
+              <input type="text" [(ngModel)]="cardLastFour" name="cardLastFour" placeholder="4321" maxlength="4">
+            </div>
+          </div>
+
+          <!-- UPI Form -->
+          <div *ngIf="paymentType === 'UPI'">
+            <div class="form-group">
+              <label>UPI ID (VPA)</label>
+              <input type="text" [(ngModel)]="upiId" name="upiId" placeholder="john@okaxis">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-block">Save Payment Method</button>
+        </form>
+      </div>
+
+      <!-- Saved Methods List -->
+      <div class="methods-grid" *ngIf="!loading && !showAddForm">
+        <div *ngIf="success" class="success-banner">{{ success }}</div>
+        
+        <div class="events-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+          <div class="event-card" *ngFor="let method of paymentMethods" style="padding: 24px; cursor: default;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+              <span style="font-size: 28px;">
+                {{ method.paymentType === 'CARD' ? '💳' : '📱' }}
+              </span>
+              <span *ngIf="method.default" style="background: rgba(34, 197, 94, 0.15); color: var(--color-success); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase;">
+                Default
+              </span>
+            </div>
+
+            <div *ngIf="method.paymentType === 'CARD'">
+              <h3 style="font-size: 18px; margin-bottom: 6px;">•••• •••• •••• {{ method.cardLastFour }}</h3>
+              <p style="color: var(--text-secondary); font-size: 14px;">{{ method.cardHolder }}</p>
+            </div>
+
+            <div *ngIf="method.paymentType === 'UPI'">
+              <h3 style="font-size: 16px; margin-bottom: 6px; word-break: break-all;">{{ method.upiId }}</h3>
+              <p style="color: var(--text-secondary); font-size: 14px;">UPI Payment Method</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="paymentMethods.length === 0">
+          <h3>No saved payment methods</h3>
+          <p>Securely add a payment method to speed up your booking process.</p>
+          <button class="btn-primary" (click)="showAddForm = true">Add Card or UPI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

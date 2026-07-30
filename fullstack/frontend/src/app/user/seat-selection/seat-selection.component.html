@@ -1,0 +1,101 @@
+<div class="user-layout">
+  <!-- Left Navigation Sidebar -->
+  <app-sidebar></app-sidebar>
+
+  <div class="user-content-area">
+    <!-- Topbar search/profile -->
+    <app-navbar></app-navbar>
+
+    <div class="user-container" *ngIf="!loading && event">
+      <div class="back-link" [routerLink]="['/events', event.id]">← Back to Event Details</div>
+
+      <div class="selection-grid">
+        <!-- Seat Map Grid -->
+        <div class="seat-map-container">
+          <div class="stage-view">
+            <div class="stage-line">STAGE</div>
+          </div>
+
+          <div class="grid-scroll">
+            <div class="seats-grid-layout">
+              <div class="seat-row" *ngFor="let rowName of getRowKeys()">
+                <span class="row-label">{{ rowName }}</span>
+                <div class="row-seats">
+                  <button *ngFor="let seat of rowsMap[rowName]" 
+                    class="seat-btn"
+                    [class.available]="seat.status === 'AVAILABLE'"
+                    [class.booked]="seat.status === 'BOOKED'"
+                    [class.locked]="seat.status === 'LOCKED'"
+                    [class.selected]="isSelected(seat)"
+                    (click)="toggleSeatSelection(seat)"
+                    [title]="'Seat ' + seat.rowName + seat.seatNumber + ' (₹' + seat.price + ')'">
+                    {{ seat.seatNumber }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item"><span class="color-box green"></span> Available</div>
+            <div class="legend-item"><span class="color-box gray"></span> Booked</div>
+            <div class="legend-item"><span class="color-box orange"></span> Locked</div>
+            <div class="legend-item"><span class="color-box blue"></span> Selected</div>
+          </div>
+        </div>
+
+        <!-- Checkout sidebar panel -->
+        <div class="checkout-panel">
+          <!-- Timer alert -->
+          <div class="timer-card" *ngIf="seatsLocked">
+            <div class="timer-head">Your Reservation Expires In</div>
+            <div class="timer-val">{{ timerDisplay }}</div>
+            <p class="timer-warning">Your seat is locked for 5 minutes only! Complete your payment before the timer expires.</p>
+          </div>
+
+          <!-- Details card -->
+          <div class="details-card">
+            <h3>Your Selection</h3>
+            
+            <div *ngIf="error" class="error-banner">
+              {{ error }}
+            </div>
+
+            <div class="selection-empty" *ngIf="selectedSeats.length === 0">
+              No seats selected. Please click on the seats grid to make your selection.
+            </div>
+
+            <div class="selection-list" *ngIf="selectedSeats.length > 0">
+              <div class="selected-seat-item" *ngFor="let seat of selectedSeats">
+                <span class="seat-code">{{ seat.rowName }}{{ seat.seatNumber }} ({{ seat.seatType }})</span>
+                <span class="seat-price">₹{{ seat.price }}</span>
+              </div>
+              
+              <hr class="card-divider">
+              
+              <div class="total-summary-row">
+                <span class="total-label">Total Amount</span>
+                <span class="total-val">₹{{ totalPrice }}</span>
+              </div>
+
+              <!-- Booking actions -->
+              <button class="btn-primary-block" *ngIf="!seatsLocked" [disabled]="reserving" (click)="lockSeats()">
+                <span *ngIf="!reserving">Lock Seats & Proceed</span>
+                <span *ngIf="reserving" class="spinner"></span>
+              </button>
+
+              <button class="btn-primary-block animate-pulse" *ngIf="seatsLocked" (click)="proceedToPayment()">
+                Proceed to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="loader-container" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Loading interactive venue seats layout...</p>
+    </div>
+  </div>
+</div>
